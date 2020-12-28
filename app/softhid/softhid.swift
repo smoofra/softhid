@@ -6,6 +6,8 @@
 //
 
 import Cocoa
+import Carbon.HIToolbox.Events
+
 
 @main
 class AppDelegate: NSObject, NSApplicationDelegate {
@@ -23,6 +25,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 }
 
 class SofthidWindow: NSWindow {
+    let x = kVK_ANSI_A
     override func sendEvent(_ event: NSEvent) {
         switch(event.type) {
         case .keyUp:
