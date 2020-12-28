@@ -7,14 +7,14 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		089C00092599744600273A0D /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 089C00082599744600273A0D /* AppDelegate.swift */; };
+		089C00092599744600273A0D /* softhid.swift in Sources */ = {isa = PBXBuildFile; fileRef = 089C00082599744600273A0D /* softhid.swift */; };
 		089C000B2599744600273A0D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 089C000A2599744600273A0D /* Assets.xcassets */; };
 		089C000E2599744600273A0D /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = 089C000C2599744600273A0D /* MainMenu.xib */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		089C00052599744600273A0D /* softhid.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = softhid.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		089C00082599744600273A0D /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		089C00082599744600273A0D /* softhid.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = softhid.swift; sourceTree = "<group>"; };
 		089C000A2599744600273A0D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		089C000D2599744600273A0D /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = Base.lproj/MainMenu.xib; sourceTree = "<group>"; };
 		089C000F2599744600273A0D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -43,7 +43,7 @@
 		089C00072599744600273A0D /* softhid */ = {
 			isa = PBXGroup;
 			children = (
-				089C00082599744600273A0D /* AppDelegate.swift */,
+				089C00082599744600273A0D /* softhid.swift */,
 				089C000A2599744600273A0D /* Assets.xcassets */,
 				089C000C2599744600273A0D /* MainMenu.xib */,
 				089C000F2599744600273A0D /* Info.plist */,
@@ -129,7 +129,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				089C00092599744600273A0D /* AppDelegate.swift in Sources */,
+				089C00092599744600273A0D /* softhid.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

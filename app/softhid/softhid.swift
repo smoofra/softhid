@@ -20,7 +20,19 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationWillTerminate(_ aNotification: Notification) {
         // Insert code here to tear down your application
     }
-
-
 }
 
+class SofthidWindow: NSWindow {
+    override func sendEvent(_ event: NSEvent) {
+        switch(event.type) {
+        case .keyUp:
+            print("KU", event)
+        case .keyDown:
+            print("KD", event)
+        case .flagsChanged:
+            print("FC", event)
+        default:
+            break;
+        }
+    }
+}
