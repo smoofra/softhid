@@ -22,7 +22,6 @@ with open(carbon_header, 'r', encoding='latin-1') as f:
 
 carbon_names['ENTER'] = 'Return'
 carbon_names['ESC'] = 'Escape'
-carbon_names['BACKSPACE'] = 'Delete'
 carbon_names['LEFTBRACE'] = 'ANSI_LeftBracket'
 carbon_names['RIGHTBRACE'] = 'ANSI_RightBracket'
 carbon_names['RIGHT'] = 'RightArrow'
@@ -31,13 +30,15 @@ carbon_names['UP'] = 'UpArrow'
 carbon_names['DOWN'] = 'DownArrow'
 
 skip = {'NON_US_NUM', 'NON_US_BS', 'TILDE', "PRINTSCREEN", "SCROLL_LOCK",
-        "PAUSE", "INSERT", "NUM_LOCK", "MENU"}
+        "PAUSE", "INSERT", "NUM_LOCK", "MENU", "BACKSPACE"}
 
 skip |= {f"F{i}" for i in range(13, 100)}
 
+seen = set()
+
 with open(teensy_header, 'r') as f, open("app/table.swift", "w") as o:
     o.write("import Carbon.HIToolbox.Events\n\n")
-    o.write("let table = [\n");
+    o.write("let carbon_keycode_to_teensy = [\n");
     for line in f:
         if m := match(r"#define KEY_(\w+) \( (\d+) \| 0xF000 \) $", line):
             (name, code) = m.groups()
@@ -46,5 +47,8 @@ with open(teensy_header, 'r') as f, open("app/table.swift", "w") as o:
             if norm(name) not in carbon_names:
                 raise Exception(f"{name} not found")
             name = carbon_names[norm(name)]
+            if name in seen:
+                raise Exception(f"dup of {name}")
+            seen.add(name)
             o.write(f'    kVK_{name}: {code} | 0xF000,\n')
     o.write("]\n")

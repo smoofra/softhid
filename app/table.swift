@@ -1,6 +1,6 @@
 import Carbon.HIToolbox.Events
 
-let table = [
+let carbon_keycode_to_teensy = [
     kVK_ANSI_A: 4 | 0xF000,
     kVK_ANSI_B: 5 | 0xF000,
     kVK_ANSI_C: 6 | 0xF000,
@@ -39,7 +39,6 @@ let table = [
     kVK_ANSI_0: 39 | 0xF000,
     kVK_Return: 40 | 0xF000,
     kVK_Escape: 41 | 0xF000,
-    kVK_Delete: 42 | 0xF000,
     kVK_Tab: 43 | 0xF000,
     kVK_Space: 44 | 0xF000,
     kVK_ANSI_Minus: 45 | 0xF000,
