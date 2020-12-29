@@ -15,6 +15,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     @IBOutlet var window: NSWindow!
 
+    @IBOutlet var serialPortSelector : NSPopUpButton!
+
     func applicationDidFinishLaunching(_ aNotification: Notification) {
         let matching : NSDictionary =  ["IOProviderClass": "IOSerialBSDClient"]
         let iterator_p = UnsafeMutablePointer<io_iterator_t>.allocate(capacity: 1)
@@ -25,7 +27,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 if service == 0 { break }
                 let k : NSString = "IOCalloutDevice"
                 let dev = IORegistryEntryCreateCFProperty(service, k, kCFAllocatorDefault, 0).takeRetainedValue()
-                print("lol", dev)
+                serialPortSelector.addItem(withTitle: String(dev as! CFString))
             }
         }
     }
@@ -51,5 +53,6 @@ class SofthidWindow: NSWindow {
         default:
             break;
         }
+        super.sendEvent(event)
     }
 }
