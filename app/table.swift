@@ -74,3 +74,17 @@ let carbon_keycode_to_teensy = [
     kVK_DownArrow: 81 | 0xF000,
     kVK_UpArrow: 82 | 0xF000,
 ]
+
+
+let teensy_CTRL = 0x01 | 0xE000
+let teensy_SHIFT = 0x02 | 0xE000
+let teensy_ALT = 0x04 | 0xE000
+let teensy_GUI = 0x08 | 0xE000
+let teensy_LEFT_CTRL = 0x01 | 0xE000
+let teensy_LEFT_SHIFT = 0x02 | 0xE000
+let teensy_LEFT_ALT = 0x04 | 0xE000
+let teensy_LEFT_GUI = 0x08 | 0xE000
+let teensy_RIGHT_CTRL = 0x10 | 0xE000
+let teensy_RIGHT_SHIFT = 0x20 | 0xE000
+let teensy_RIGHT_ALT = 0x40 | 0xE000
+let teensy_RIGHT_GUI = 0x80 | 0xE000

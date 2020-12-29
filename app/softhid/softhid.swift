@@ -81,10 +81,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func handleEvent(_ event: NSEvent) -> Bool {
+        print(event)
         guard let fd = maybe_fd else { return false }
         switch(event.type) {
         case .keyUp:
-            print("KU", event)
             guard let keycode = carbon_keycode_to_teensy[Int(event.keyCode)] else { return false }
             let seq = String.init(format: "\u{1b}{%du", keycode).data(using: String.Encoding.utf8)!
             let r = seq.withUnsafeBytes { p in
@@ -94,7 +94,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             return true;
         case .keyDown:
             if event.isARepeat { return true }
-            print("KD", event)
             guard let keycode = carbon_keycode_to_teensy[Int(event.keyCode)] else { return false }
             let seq = String.init(format: "\u{1b}{%dd", keycode).data(using: String.Encoding.utf8)!
             let r = seq.withUnsafeBytes { p in
@@ -103,8 +102,50 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             assert(r == seq.count)
             return true;
         case .flagsChanged:
-            print("FC", event)
-            return false
+            var flags = 0
+            let ef = event.modifierFlags.rawValue;
+            if ef & NSEvent.ModifierFlags.shift.rawValue != 0 {
+                flags |= teensy_SHIFT;
+            }
+            if ef & kLEFT_SHIFT != 0 {
+                flags |= teensy_LEFT_SHIFT;
+            }
+            if ef & kRIGHT_SHIFT != 0 {
+                flags |= teensy_RIGHT_SHIFT;
+            }
+            if ef & NSEvent.ModifierFlags.control.rawValue != 0 {
+                flags |= teensy_CTRL;
+            }
+            if ef & kLEFT_CONTROL != 0 {
+                flags |= teensy_LEFT_CTRL;
+            }
+            if ef & kRIGHT_SHIFT != 0 {
+                flags |= teensy_RIGHT_CTRL;
+            }
+            if ef & NSEvent.ModifierFlags.option.rawValue != 0 {
+                flags |= teensy_ALT;
+            }
+            if ef & kLEFT_OPTION != 0 {
+                flags |= teensy_LEFT_ALT;
+            }
+            if ef & kRIGHT_OPTION != 0 {
+                flags |= teensy_RIGHT_ALT;
+            }
+            if ef & NSEvent.ModifierFlags.command.rawValue != 0 {
+                flags |= teensy_GUI;
+            }
+            if ef & kLEFT_COMMAND != 0 {
+                flags |= teensy_LEFT_GUI;
+            }
+            if ef & kRIGHT_OPTION != 0 {
+                flags |= teensy_RIGHT_GUI;
+            }
+            let seq = String.init(format: "\u{1b}{%df", flags).data(using: String.Encoding.utf8)!
+            let r = seq.withUnsafeBytes { p in
+                write(fd, p.baseAddress, seq.count);
+            }
+            assert(r == seq.count)
+            return true
         default:
             return false
         }

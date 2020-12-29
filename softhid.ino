@@ -300,6 +300,11 @@ void loop() {
           Keyboard.send_now();
           m = {};
           break;
+        case 'f':
+          Keyboard.set_modifier(m.code);
+          Keyboard.send_now();
+          m = {};
+          break;
         default:
           Serial1.printf("huh?\r\n");
           m = {};

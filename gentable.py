@@ -35,11 +35,13 @@ skip = {'NON_US_NUM', 'NON_US_BS', 'TILDE', "PRINTSCREEN", "SCROLL_LOCK",
 skip |= {f"F{i}" for i in range(13, 100)}
 
 seen = set()
-
+modifiers = list()
 with open(teensy_header, 'r') as f, open("app/table.swift", "w") as o:
     o.write("import Carbon.HIToolbox.Events\n\n")
     o.write("let carbon_keycode_to_teensy = [\n");
     for line in f:
+        if m := match(r"#define MODIFIERKEY_(\w+) \( (0x[a-fA-F0-9]+) \| 0xE000 \) $", line):
+            modifiers.append(m)
         if m := match(r"#define KEY_(\w+) \( (\d+) \| 0xF000 \) $", line):
             (name, code) = m.groups()
             if name in skip:
@@ -51,4 +53,7 @@ with open(teensy_header, 'r') as f, open("app/table.swift", "w") as o:
                 raise Exception(f"dup of {name}")
             seen.add(name)
             o.write(f'    kVK_{name}: {code} | 0xF000,\n')
-    o.write("]\n")
+    o.write("]\n\n\n")
+    for m in modifiers:
+        (name, code) = m.groups()
+        o.write(f'let teensy_{name} = {code} | 0xE000\n')
