@@ -8,14 +8,56 @@
 import Cocoa
 import Carbon.HIToolbox.Events
 import IOKit
+import IOKit.serial
 
 
 @main
 class AppDelegate: NSObject, NSApplicationDelegate {
 
+    @IBOutlet var connectButton: NSButton!
+    @IBOutlet var disconnectButton: NSButton!
     @IBOutlet var window: NSWindow!
-
     @IBOutlet var serialPortSelector : NSPopUpButton!
+    @IBOutlet var messages : NSTextView!
+
+    var maybe_fd : Int32?
+
+    @IBAction func connect(sender : NSButton) {
+        guard let device = serialPortSelector.selectedItem?.title else {
+            messages.string = "select a port to connect to"
+            return
+        }
+        let fd = open(device, O_RDWR | O_NOCTTY | O_NONBLOCK)
+        if (fd < 0) {
+            messages.string = "error opening serial port: " + (String(utf8String: strerror(errno)) ?? "unkown error")
+            return
+        }
+        if (ioctl(fd, TIOCEXCL) == -1) {
+            messages.string = "serial port in use by another program"
+            return
+        }
+        let speed_p = UnsafeMutablePointer<speed_t>.allocate(capacity: 1)
+        speed_p.pointee = 115200
+        if (ioctl(fd, kIOSSIOSPEED, speed_p) == -1 ) {
+            messages.string = "unable to set the baud rate"
+            return
+        }
+        maybe_fd = fd
+        messages.string = "ok!"
+        connectButton.isEnabled = false
+        disconnectButton.isEnabled = true
+    }
+
+    @IBAction func disconnect(sender: NSButton) {
+        if let fd = maybe_fd {
+            close(fd);
+        }
+        messages.string = ""
+        maybe_fd = nil
+        connectButton.isEnabled = true
+        disconnectButton.isEnabled = false
+    }
+
 
     func applicationDidFinishLaunching(_ aNotification: Notification) {
         let matching : NSDictionary =  ["IOProviderClass": "IOSerialBSDClient"]
