@@ -80,29 +80,33 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Insert code here to tear down your application
     }
 
-    func sendEvent(_ event: NSEvent) {
-        guard let fd = maybe_fd else { return }
+    func handleEvent(_ event: NSEvent) -> Bool {
+        guard let fd = maybe_fd else { return false }
         switch(event.type) {
         case .keyUp:
             print("KU", event)
-            guard let keycode = carbon_keycode_to_teensy[Int(event.keyCode)] else { return }
-            let seq = String.init(format: "\u{1b}{%du;", keycode).data(using: String.Encoding.utf8)!
+            guard let keycode = carbon_keycode_to_teensy[Int(event.keyCode)] else { return false }
+            let seq = String.init(format: "\u{1b}{%du", keycode).data(using: String.Encoding.utf8)!
             let r = seq.withUnsafeBytes { p in
                 write(fd, p.baseAddress, seq.count);
             }
             assert(r == seq.count)
+            return true;
         case .keyDown:
+            if event.isARepeat { return true }
             print("KD", event)
-            guard let keycode = carbon_keycode_to_teensy[Int(event.keyCode)] else { return }
-            let seq = String.init(format: "\u{1b}{%dd;", keycode).data(using: String.Encoding.utf8)!
+            guard let keycode = carbon_keycode_to_teensy[Int(event.keyCode)] else { return false }
+            let seq = String.init(format: "\u{1b}{%dd", keycode).data(using: String.Encoding.utf8)!
             let r = seq.withUnsafeBytes { p in
                 write(fd, p.baseAddress, seq.count);
             }
             assert(r == seq.count)
+            return true;
         case .flagsChanged:
             print("FC", event)
+            return false
         default:
-            break;
+            return false
         }
     }
 }
@@ -111,7 +115,9 @@ class SofthidWindow: NSWindow {
     let x = kVK_ANSI_A
     override func sendEvent(_ event: NSEvent) {
         let del = NSApplication.shared.delegate as! AppDelegate
-        del.sendEvent(event)
-        super.sendEvent(event)
+        let handleled = del.handleEvent(event)
+        if  !handleled {
+            super.sendEvent(event)
+        }
     }
 }
