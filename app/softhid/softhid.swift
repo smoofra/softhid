@@ -37,6 +37,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
         let speed_p = UnsafeMutablePointer<speed_t>.allocate(capacity: 1)
+        defer { speed_p.deallocate() }
         speed_p.pointee = 115200
         if (ioctl(fd, kIOSSIOSPEED, speed_p) == -1 ) {
             messages.string = "unable to set the baud rate"
@@ -62,6 +63,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ aNotification: Notification) {
         let matching : NSDictionary =  ["IOProviderClass": "IOSerialBSDClient"]
         let iterator_p = UnsafeMutablePointer<io_iterator_t>.allocate(capacity: 1)
+        defer { iterator_p.deallocate() }
         let kr = IOServiceGetMatchingServices(kIOMasterPortDefault, matching, iterator_p)
         if kr == KERN_SUCCESS {
             while true {
@@ -77,24 +79,39 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationWillTerminate(_ aNotification: Notification) {
         // Insert code here to tear down your application
     }
-}
 
-class SofthidWindow: NSWindow {
-    let x = kVK_ANSI_A
-    override func sendEvent(_ event: NSEvent) {
+    func sendEvent(_ event: NSEvent) {
+        guard let fd = maybe_fd else { return }
         switch(event.type) {
         case .keyUp:
             print("KU", event)
-            if let keycode = carbon_keycode_to_teensy[Int(event.keyCode)] {
-
+            guard let keycode = carbon_keycode_to_teensy[Int(event.keyCode)] else { return }
+            let seq = String.init(format: "\u{1b}{%du;", keycode).data(using: String.Encoding.utf8)!
+            let r = seq.withUnsafeBytes { p in
+                write(fd, p.baseAddress, seq.count);
             }
+            assert(r == seq.count)
         case .keyDown:
             print("KD", event)
+            guard let keycode = carbon_keycode_to_teensy[Int(event.keyCode)] else { return }
+            let seq = String.init(format: "\u{1b}{%dd;", keycode).data(using: String.Encoding.utf8)!
+            let r = seq.withUnsafeBytes { p in
+                write(fd, p.baseAddress, seq.count);
+            }
+            assert(r == seq.count)
         case .flagsChanged:
             print("FC", event)
         default:
             break;
         }
+    }
+}
+
+class SofthidWindow: NSWindow {
+    let x = kVK_ANSI_A
+    override func sendEvent(_ event: NSEvent) {
+        let del = NSApplication.shared.delegate as! AppDelegate
+        del.sendEvent(event)
         super.sendEvent(event)
     }
 }

@@ -10,7 +10,7 @@
 		08890E00259A76E800EF240B /* table.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08890DFF259A76E800EF240B /* table.swift */; };
 		089C00092599744600273A0D /* softhid.swift in Sources */ = {isa = PBXBuildFile; fileRef = 089C00082599744600273A0D /* softhid.swift */; };
 		089C000B2599744600273A0D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 089C000A2599744600273A0D /* Assets.xcassets */; };
-		089C000E2599744600273A0D /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = 089C000C2599744600273A0D /* MainMenu.xib */; };
+		089C000E2599744600273A0D /* interface.xib in Resources */ = {isa = PBXBuildFile; fileRef = 089C000C2599744600273A0D /* interface.xib */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -19,7 +19,7 @@
 		089C00052599744600273A0D /* softhid.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = softhid.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		089C00082599744600273A0D /* softhid.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = softhid.swift; sourceTree = "<group>"; };
 		089C000A2599744600273A0D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		089C000D2599744600273A0D /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = Base.lproj/MainMenu.xib; sourceTree = "<group>"; };
+		089C000D2599744600273A0D /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = Base.lproj/interface.xib; sourceTree = "<group>"; };
 		089C000F2599744600273A0D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		089C00102599744600273A0D /* softhid.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = softhid.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -49,7 +49,7 @@
 				08890DFF259A76E800EF240B /* table.swift */,
 				089C00082599744600273A0D /* softhid.swift */,
 				089C000A2599744600273A0D /* Assets.xcassets */,
-				089C000C2599744600273A0D /* MainMenu.xib */,
+				089C000C2599744600273A0D /* interface.xib */,
 				089C000F2599744600273A0D /* Info.plist */,
 				089C00102599744600273A0D /* softhid.entitlements */,
 				0871902F259BB9AF001942D1 /* softhid-Bridging-Header.h */,
@@ -124,7 +124,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				089C000B2599744600273A0D /* Assets.xcassets in Resources */,
-				089C000E2599744600273A0D /* MainMenu.xib in Resources */,
+				089C000E2599744600273A0D /* interface.xib in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -143,12 +143,12 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXVariantGroup section */
-		089C000C2599744600273A0D /* MainMenu.xib */ = {
+		089C000C2599744600273A0D /* interface.xib */ = {
 			isa = PBXVariantGroup;
 			children = (
 				089C000D2599744600273A0D /* Base */,
 			);
-			name = MainMenu.xib;
+			name = interface.xib;
 			sourceTree = "<group>";
 		};
 /* End PBXVariantGroup section */
