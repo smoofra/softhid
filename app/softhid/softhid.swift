@@ -10,7 +10,6 @@ import Carbon.HIToolbox.Events
 import IOKit
 import IOKit.serial
 
-
 @main
 class AppDelegate: NSObject, NSApplicationDelegate {
 
@@ -57,6 +56,29 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         maybe_fd = nil
         connectButton.isEnabled = true
         disconnectButton.isEnabled = false
+    }
+
+    @IBAction func tap(sender: NSButton) {
+
+        let mask : UInt64 = 1 << CGEventType.keyUp.rawValue | 1 << CGEventType.keyDown.rawValue  | 1 << CGEventType.flagsChanged.rawValue
+
+        func callback(proxy: CGEventTapProxy, type: CGEventType, event: CGEvent, refcon: UnsafeMutableRawPointer?) -> Unmanaged<CGEvent>? {
+            print("TAP", event)
+            return Unmanaged.passRetained(event)
+        }
+
+        guard let tap = CGEvent.tapCreate(tap: .cgSessionEventTap, place: .headInsertEventTap, options: .defaultTap, eventsOfInterest: mask, callback: callback, userInfo: nil) else
+        {
+            messages.string = "couldn't create tap"
+            return
+        }
+
+        let source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
+        CFRunLoopAddSource(CFRunLoopGetCurrent(), source, .commonModes)
+        CGEvent.tapEnable(tap: tap, enable: true)
+        messages.string = "created tap!"
+
+        print(tap)
     }
 
 
