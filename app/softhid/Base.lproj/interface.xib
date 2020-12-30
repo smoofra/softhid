@@ -2,8 +2,10 @@
 <document type="com.apple.InterfaceBuilder3.Cocoa.XIB" version="3.0" toolsVersion="17701" targetRuntime="MacOSX.Cocoa" propertyAccessControl="none" useAutolayout="YES" customObjectInstantitationMethod="direct">
     <dependencies>
         <deployment identifier="macosx"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.CocoaDFRPlugin" version="17008"/>
         <plugIn identifier="com.apple.InterfaceBuilder.CocoaPlugin" version="17701"/>
         <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
+        <capability name="the Touch Bar" minToolsVersion="8.1" minSystemVersion="10.12.2" requiredIntegratedClassName="NSTouchBar"/>
     </dependencies>
     <objects>
         <customObject id="-2" userLabel="File's Owner" customClass="NSApplication">
@@ -18,7 +20,10 @@
                 <outlet property="connectButton" destination="Zys-35-8eA" id="adU-cA-Pv3"/>
                 <outlet property="disconnectButton" destination="oQD-S7-3Qi" id="FRx-Dk-gnm"/>
                 <outlet property="messages" destination="g09-M3-VRq" id="KQa-WI-VDU"/>
+                <outlet property="releaseKeyboardMenuItem" destination="Hu1-gT-r6J" id="psc-NR-TNa"/>
+                <outlet property="releaseKeyboardTouchbarItem" destination="TrQ-aE-kXq" id="BUC-Ug-xfs"/>
                 <outlet property="serialPortSelector" destination="IUE-bd-ebz" id="bKL-Ix-An2"/>
+                <outlet property="tapButton" destination="TZp-pJ-zSs" id="YMy-mS-PqQ"/>
                 <outlet property="window" destination="QvC-M9-y7g" id="gIp-Ho-8D9"/>
             </connections>
         </customObject>
@@ -33,6 +38,12 @@
                                 <modifierMask key="keyEquivalentModifierMask"/>
                                 <connections>
                                     <action selector="orderFrontStandardAboutPanel:" target="-1" id="Exp-CZ-Vem"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem title="Release Keyboard" enabled="NO" id="Hu1-gT-r6J">
+                                <modifierMask key="keyEquivalentModifierMask"/>
+                                <connections>
+                                    <action selector="disableTapWithSender:" target="Voe-Tx-rLC" id="3sm-Z4-R6n"/>
                                 </connections>
                             </menuItem>
                             <menuItem isSeparatorItem="YES" id="VOq-y0-SEH"/>
@@ -164,7 +175,29 @@
                     </button>
                 </subviews>
             </view>
-            <point key="canvasLocation" x="-172" y="88"/>
+            <connections>
+                <outlet property="touchbar" destination="Jp3-V8-krS" id="XDq-oE-dpt"/>
+            </connections>
+            <point key="canvasLocation" x="-221" y="113"/>
         </window>
+        <touchBar id="Jp3-V8-krS">
+            <touchBarItems>
+                <touchBarItem id="5Dg-6U-6NN">
+                    <viewController key="viewController" id="DSo-9I-MwZ">
+                        <button key="view" verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="TrQ-aE-kXq">
+                            <rect key="frame" x="0.0" y="0.0" width="144" height="30"/>
+                            <buttonCell key="cell" type="push" title="Release Keyboard" bezelStyle="rounded" alignment="center" enabled="NO" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="KO4-ji-UpH">
+                                <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
+                                <font key="font" usesAppearanceFont="YES"/>
+                            </buttonCell>
+                            <connections>
+                                <action selector="disableTapWithSender:" target="Voe-Tx-rLC" id="xn5-Kd-Xam"/>
+                            </connections>
+                        </button>
+                    </viewController>
+                </touchBarItem>
+            </touchBarItems>
+            <point key="canvasLocation" x="-115" y="-237"/>
+        </touchBar>
     </objects>
 </document>

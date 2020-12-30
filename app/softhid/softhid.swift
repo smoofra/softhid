@@ -18,6 +18,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @IBOutlet var window: NSWindow!
     @IBOutlet var serialPortSelector : NSPopUpButton!
     @IBOutlet var messages : NSTextView!
+    @IBOutlet var tapButton: NSButton!
+    @IBOutlet var releaseKeyboardMenuItem: NSMenuItem!
+    @IBOutlet var releaseKeyboardTouchbarItem: NSButton!
+
 
     var maybe_fd : Int32?
     var maybe_tap : CFMachPort?
@@ -63,23 +67,35 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func handleTapEvent(proxy: CGEventTapProxy, type: CGEventType, event: CGEvent) -> CGEvent? {
         print("TAPxx", event)
         switch (type) {
-        case .tapDisabledByTimeout, .tapDisabledByUserInput:
-            break
+        case .tapDisabledByTimeout:
+            messages.string = "tap disabled by timeout."
+        case.tapDisabledByUserInput:
+            if messages.string != "tap disabled." {
+                messages.string = "tap disabled by user input."
+            }
         case .keyUp:
             break
         case .keyDown:
             let keycode = event.getIntegerValueField(.keyboardEventKeycode)
-            if keycode == kVK_Escape {
-                CGEvent.tapEnable(tap: maybe_tap!, enable: false)
-                messages.string = "tap disabled."
+            if keycode == kVK_ANSI_X && cmd_pressed {
+                disableTap(sender: nil  )
             }
         case .flagsChanged:
+            let ctrl = (event.flags.rawValue & UInt64(NSEvent.ModifierFlags.control.rawValue)) != 0
+            print("ctrl", ctrl)
             cmd_pressed = (event.flags.rawValue & UInt64(NSEvent.ModifierFlags.command.rawValue)) != 0
 
         default:
             assert(false)
         }
-        return event
+        return nil
+    }
+
+    @IBAction func disableTap(sender: Any?) {
+        CGEvent.tapEnable(tap: maybe_tap!, enable: false)
+        releaseKeyboardMenuItem.isEnabled = false
+        releaseKeyboardTouchbarItem.isEnabled = false
+        messages.string = "tap disabled."
     }
 
     @IBAction func tap(sender: NSButton) {
@@ -96,7 +112,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
 
-        maybe_tap = CGEvent.tapCreate(tap: .cgSessionEventTap, place: .headInsertEventTap, options: .defaultTap, eventsOfInterest: mask, callback:callback, userInfo: Unmanaged.passUnretained(self).toOpaque())
+        maybe_tap = CGEvent.tapCreate(tap:.cgSessionEventTap, place:.headInsertEventTap, options:.defaultTap, eventsOfInterest: mask, callback:callback, userInfo: Unmanaged.passUnretained(self).toOpaque())
         guard let tap = maybe_tap else
         {
             messages.string = "couldn't create tap"
@@ -107,7 +123,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         CFRunLoopAddSource(CFRunLoopGetCurrent(), source, .commonModes)
         CGEvent.tapEnable(tap: tap, enable: true)
         messages.string = "created tap!"
-        sender.isEnabled = false
+        tapButton.isEnabled = false
+        releaseKeyboardMenuItem.isEnabled = true
+        releaseKeyboardTouchbarItem.isEnabled = true
     }
 
 
@@ -205,6 +223,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
 class SofthidWindow: NSWindow {
     let x = kVK_ANSI_A
+
+    @IBOutlet var touchbar : NSTouchBar!
+
+    override func makeTouchBar() -> NSTouchBar? {
+        return touchbar
+    }
+
     override func sendEvent(_ event: NSEvent) {
         let del = NSApplication.shared.delegate as! AppDelegate
         let handleled = del.handleEvent(event)
