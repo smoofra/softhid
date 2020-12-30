@@ -20,6 +20,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @IBOutlet var messages : NSTextView!
 
     var maybe_fd : Int32?
+    var maybe_tap : CFMachPort?
+    var cmd_pressed : Bool = false
 
     @IBAction func connect(sender : NSButton) {
         guard let device = serialPortSelector.selectedItem?.title else {
@@ -58,16 +60,44 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         disconnectButton.isEnabled = false
     }
 
+    func handleTapEvent(proxy: CGEventTapProxy, type: CGEventType, event: CGEvent) -> CGEvent? {
+        print("TAPxx", event)
+        switch (type) {
+        case .tapDisabledByTimeout, .tapDisabledByUserInput:
+            break
+        case .keyUp:
+            break
+        case .keyDown:
+            let keycode = event.getIntegerValueField(.keyboardEventKeycode)
+            if keycode == kVK_Escape {
+                CGEvent.tapEnable(tap: maybe_tap!, enable: false)
+                messages.string = "tap disabled."
+            }
+        case .flagsChanged:
+            cmd_pressed = (event.flags.rawValue & UInt64(NSEvent.ModifierFlags.command.rawValue)) != 0
+
+        default:
+            assert(false)
+        }
+        return event
+    }
+
     @IBAction func tap(sender: NSButton) {
+        assert(maybe_tap == nil)
 
         let mask : UInt64 = 1 << CGEventType.keyUp.rawValue | 1 << CGEventType.keyDown.rawValue  | 1 << CGEventType.flagsChanged.rawValue
 
         func callback(proxy: CGEventTapProxy, type: CGEventType, event: CGEvent, refcon: UnsafeMutableRawPointer?) -> Unmanaged<CGEvent>? {
-            print("TAP", event)
-            return Unmanaged.passRetained(event)
+            let del = Unmanaged<AppDelegate>.fromOpaque(refcon!).takeUnretainedValue()
+            if let e = del.handleTapEvent(proxy: proxy, type: type, event: event) {
+                return Unmanaged.passRetained(e)
+            } else  {
+                return nil
+            }
         }
 
-        guard let tap = CGEvent.tapCreate(tap: .cgSessionEventTap, place: .headInsertEventTap, options: .defaultTap, eventsOfInterest: mask, callback: callback, userInfo: nil) else
+        maybe_tap = CGEvent.tapCreate(tap: .cgSessionEventTap, place: .headInsertEventTap, options: .defaultTap, eventsOfInterest: mask, callback:callback, userInfo: Unmanaged.passUnretained(self).toOpaque())
+        guard let tap = maybe_tap else
         {
             messages.string = "couldn't create tap"
             return
@@ -77,8 +107,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         CFRunLoopAddSource(CFRunLoopGetCurrent(), source, .commonModes)
         CGEvent.tapEnable(tap: tap, enable: true)
         messages.string = "created tap!"
-
-        print(tap)
+        sender.isEnabled = false
     }
 
 
