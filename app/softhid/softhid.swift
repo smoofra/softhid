@@ -10,6 +10,11 @@ import Carbon.HIToolbox.Events
 import IOKit
 import IOKit.serial
 
+enum SerialPortError : Error {
+    case EOF
+    case Errno(Int32)
+}
+
 @main
 class AppDelegate: NSObject, NSApplicationDelegate {
 
@@ -54,12 +59,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
         maybe_fd = fd
-        messages.string = "ok!"
         connectButton.isEnabled = false
         disconnectButton.isEnabled = true
+        messages.string = "ok!"
     }
 
-    @IBAction func disconnect(sender: NSButton) {
+    @IBAction func disconnect(sender: Any?) {
         if let fd = maybe_fd {
             close(fd);
         }
@@ -81,15 +86,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
             tapIsDisabled()
         case .keyUp:
-            break
+            sendKeyUp(carbon_keycode: Int(event.getIntegerValueField(.keyboardEventKeycode)))
         case .keyDown:
             let keycode = event.getIntegerValueField(.keyboardEventKeycode)
             let mask = UInt64(kCONTROL | kOPTION | kCOMMAND)
             if keyboard_flags & mask == mask && keycode == kVK_Delete {
                 disableTap(sender: nil)
+            } else if event.getIntegerValueField(.keyboardEventAutorepeat) == 0 {
+                sendKeyDown(carbon_keycode: Int(keycode))
             }
         case .flagsChanged:
             keyboard_flags = event.flags.rawValue
+            sendKeyFlags(carbon_flags: UInt(keyboard_flags))
         default:
             assert(false)
         }
@@ -183,74 +191,108 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ aNotification: Notification) {
-        // Insert code here to tear down your application
+    }
+
+
+    func send(_ string : String) throws {
+        guard let fd = maybe_fd else { return }
+        let seq = string.data(using: .utf8)!
+        try seq.withUnsafeBytes({buffer -> Void in
+            var p : UnsafeRawPointer = buffer.baseAddress!
+            var toWrite = seq.count
+            while toWrite > 0 {
+                let r = write(fd, p, toWrite)
+                if (r > 0) {
+                    toWrite -= r
+                    p = p.advanced(by: r)
+                } else if (r == 0) {
+                    throw SerialPortError.EOF
+                } else {
+                    throw SerialPortError.Errno(errno)
+                }
+            }
+        })
+    }
+
+
+    func trySend(_ string : String) {
+        var error : String?
+        do {
+            try send(string)
+            return
+        } catch SerialPortError.EOF {
+            error = "unexpected EOF"
+        } catch SerialPortError.Errno(let e) {
+            error = String(utf8String: strerror(e))
+        } catch {}
+        messages.string = "Failed to send commands via serial port: " + (error ?? "uknown error")
+        disconnect(sender: nil)
+    }
+
+    func sendKeyUp(carbon_keycode : Int) {
+        guard let keycode = carbon_keycode_to_teensy[carbon_keycode] else { return }
+        trySend(String.init(format: "\u{1b}{%du", keycode))
+    }
+
+    func sendKeyDown(carbon_keycode : Int) {
+        guard let keycode = carbon_keycode_to_teensy[carbon_keycode] else { return }
+        trySend(String.init(format: "\u{1b}{%dd", keycode))
+    }
+
+    func sendKeyFlags(carbon_flags ef : UInt) {
+        var flags = 0
+        if ef & NSEvent.ModifierFlags.shift.rawValue != 0 {
+            flags |= teensy_SHIFT;
+        }
+        if ef & kLEFT_SHIFT != 0 {
+            flags |= teensy_LEFT_SHIFT;
+        }
+        if ef & kRIGHT_SHIFT != 0 {
+            flags |= teensy_RIGHT_SHIFT;
+        }
+        if ef & NSEvent.ModifierFlags.control.rawValue != 0 {
+            flags |= teensy_CTRL;
+        }
+        if ef & kLEFT_CONTROL != 0 {
+            flags |= teensy_LEFT_CTRL;
+        }
+        if ef & kRIGHT_SHIFT != 0 {
+            flags |= teensy_RIGHT_CTRL;
+        }
+        if ef & NSEvent.ModifierFlags.option.rawValue != 0 {
+            flags |= teensy_ALT;
+        }
+        if ef & kLEFT_OPTION != 0 {
+            flags |= teensy_LEFT_ALT;
+        }
+        if ef & kRIGHT_OPTION != 0 {
+            flags |= teensy_RIGHT_ALT;
+        }
+        if ef & NSEvent.ModifierFlags.command.rawValue != 0 {
+            flags |= teensy_GUI;
+        }
+        if ef & kLEFT_COMMAND != 0 {
+            flags |= teensy_LEFT_GUI;
+        }
+        if ef & kRIGHT_OPTION != 0 {
+            flags |= teensy_RIGHT_GUI;
+        }
+        trySend(String.init(format: "\u{1b}{%df", flags))
     }
 
     func handleEvent(_ event: NSEvent) -> Bool {
         print(event)
-        guard let fd = maybe_fd else { return false }
+        if maybe_fd == nil { return false }
         switch(event.type) {
         case .keyUp:
-            guard let keycode = carbon_keycode_to_teensy[Int(event.keyCode)] else { return false }
-            let seq = String.init(format: "\u{1b}{%du", keycode).data(using: String.Encoding.utf8)!
-            let r = seq.withUnsafeBytes { p in
-                write(fd, p.baseAddress, seq.count);
-            }
-            assert(r == seq.count)
+            sendKeyUp(carbon_keycode: Int(event.keyCode))
             return true;
         case .keyDown:
             if event.isARepeat { return true }
-            guard let keycode = carbon_keycode_to_teensy[Int(event.keyCode)] else { return false }
-            let seq = String.init(format: "\u{1b}{%dd", keycode).data(using: String.Encoding.utf8)!
-            let r = seq.withUnsafeBytes { p in
-                write(fd, p.baseAddress, seq.count);
-            }
-            assert(r == seq.count)
+            sendKeyDown(carbon_keycode: Int(event.keyCode))
             return true;
         case .flagsChanged:
-            var flags = 0
-            let ef = event.modifierFlags.rawValue;
-            if ef & NSEvent.ModifierFlags.shift.rawValue != 0 {
-                flags |= teensy_SHIFT;
-            }
-            if ef & kLEFT_SHIFT != 0 {
-                flags |= teensy_LEFT_SHIFT;
-            }
-            if ef & kRIGHT_SHIFT != 0 {
-                flags |= teensy_RIGHT_SHIFT;
-            }
-            if ef & NSEvent.ModifierFlags.control.rawValue != 0 {
-                flags |= teensy_CTRL;
-            }
-            if ef & kLEFT_CONTROL != 0 {
-                flags |= teensy_LEFT_CTRL;
-            }
-            if ef & kRIGHT_SHIFT != 0 {
-                flags |= teensy_RIGHT_CTRL;
-            }
-            if ef & NSEvent.ModifierFlags.option.rawValue != 0 {
-                flags |= teensy_ALT;
-            }
-            if ef & kLEFT_OPTION != 0 {
-                flags |= teensy_LEFT_ALT;
-            }
-            if ef & kRIGHT_OPTION != 0 {
-                flags |= teensy_RIGHT_ALT;
-            }
-            if ef & NSEvent.ModifierFlags.command.rawValue != 0 {
-                flags |= teensy_GUI;
-            }
-            if ef & kLEFT_COMMAND != 0 {
-                flags |= teensy_LEFT_GUI;
-            }
-            if ef & kRIGHT_OPTION != 0 {
-                flags |= teensy_RIGHT_GUI;
-            }
-            let seq = String.init(format: "\u{1b}{%df", flags).data(using: String.Encoding.utf8)!
-            let r = seq.withUnsafeBytes { p in
-                write(fd, p.baseAddress, seq.count);
-            }
-            assert(r == seq.count)
+            sendKeyFlags(carbon_flags: event.modifierFlags.rawValue)
             return true
         default:
             return false
