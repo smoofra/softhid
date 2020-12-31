@@ -56,6 +56,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var maybe_tap : CFMachPort?
     var keyboard_flags : UInt64 = 0
     
+    var leftMouseDown: Bool = false
+    var rightMouseDown: Bool = false
+
     var readSource : DispatchSourceRead?
     var acksNeeded = 0
     let maxAcksNeeded = 5
@@ -120,6 +123,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    func trySendMouseButtons() {
+        func bool2int(_ b : Bool) -> Int {
+            return b ? 1 : 0
+        }
+        trySend(String.init(format: "\u{1b}{%d,0,%db", bool2int(leftMouseDown), bool2int(rightMouseDown)))
+    }
+
     func handleTapEvent(proxy: CGEventTapProxy, type: CGEventType, event: CGEvent) -> CGEvent? {
         print("TAPxx", event)
         switch (type) {
@@ -150,9 +160,21 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             let x = event.getIntegerValueField(.mouseEventDeltaX)
             let y = event.getIntegerValueField(.mouseEventDeltaY)
             trySend(message: .Mouse(x:x, y:y))
+
+        case .leftMouseUp:
+            leftMouseDown = false
+            trySendMouseButtons()
+        case .leftMouseDown:
+            leftMouseDown = true
+            trySendMouseButtons()
+        case .rightMouseUp:
+            rightMouseDown = false
+            trySendMouseButtons()
+        case .rightMouseDown:
+            rightMouseDown = true
+            trySendMouseButtons()
         default:
-            break
-            //assert(false)
+            assert(false)
         }
         return nil
     }
@@ -191,7 +213,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let first_time = maybe_tap == nil
         
         if maybe_tap == nil {
-            let mask : UInt64 = 1 << CGEventType.keyUp.rawValue | 1 << CGEventType.keyDown.rawValue  | 1 << CGEventType.flagsChanged.rawValue | 1 << CGEventType.mouseMoved.rawValue
+            let types : [CGEventType] = [
+                .keyUp, .keyDown, .flagsChanged,
+                .mouseMoved,
+                .leftMouseUp, .leftMouseDown, .rightMouseUp, .rightMouseDown
+            ]
+            let mask = types.reduce(0) { (x:UInt64, type:CGEventType) -> UInt64 in
+                x | 1 << type.rawValue
+            }
             maybe_tap = CGEvent.tapCreate(tap:.cgSessionEventTap, place:.headInsertEventTap, options:.defaultTap, eventsOfInterest: mask, callback:callback, userInfo: Unmanaged.passUnretained(self).toOpaque())
         }
 
