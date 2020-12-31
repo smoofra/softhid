@@ -156,7 +156,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             sendKeyFlags(carbon_flags: UInt(keyboard_flags))
             
         case .mouseMoved:
-            // FIXME check overflow
             let x = event.getIntegerValueField(.mouseEventDeltaX)
             let y = event.getIntegerValueField(.mouseEventDeltaY)
             trySend(message: .Mouse(x:x, y:y))
@@ -173,6 +172,22 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         case .rightMouseDown:
             rightMouseDown = true
             trySendMouseButtons()
+        case .leftMouseDragged:
+            if (!leftMouseDown) {
+                leftMouseDown = true
+                trySendMouseButtons()
+            }
+            let x = event.getIntegerValueField(.mouseEventDeltaX)
+            let y = event.getIntegerValueField(.mouseEventDeltaY)
+            trySend(message: .Mouse(x:x, y:y))
+        case .rightMouseDragged:
+            if (!rightMouseDown) {
+                rightMouseDown = true
+                trySendMouseButtons()
+            }
+            let x = event.getIntegerValueField(.mouseEventDeltaX)
+            let y = event.getIntegerValueField(.mouseEventDeltaY)
+            trySend(message: .Mouse(x:x, y:y))
         default:
             assert(false)
         }
@@ -216,7 +231,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             let types : [CGEventType] = [
                 .keyUp, .keyDown, .flagsChanged,
                 .mouseMoved,
-                .leftMouseUp, .leftMouseDown, .rightMouseUp, .rightMouseDown
+                .leftMouseUp, .leftMouseDown, .rightMouseUp, .rightMouseDown,
+                .leftMouseDragged, .rightMouseDragged,
             ]
             let mask = types.reduce(0) { (x:UInt64, type:CGEventType) -> UInt64 in
                 x | 1 << type.rawValue
