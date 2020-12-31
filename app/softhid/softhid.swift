@@ -25,7 +25,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     var maybe_fd : Int32?
     var maybe_tap : CFMachPort?
-    var cmd_pressed : Bool = false
+    var keyboard_flags : UInt64 = 0
+    
+    let kSHIFT = NSEvent.ModifierFlags.shift.rawValue
+    let kCONTROL = NSEvent.ModifierFlags.control.rawValue
+    let kOPTION = NSEvent.ModifierFlags.option.rawValue
+    let kCOMMAND = NSEvent.ModifierFlags.command.rawValue
 
     @IBAction func connect(sender : NSButton) {
         guard let device = serialPortSelector.selectedItem?.title else {
@@ -68,23 +73,23 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         print("TAPxx", event)
         switch (type) {
         case .tapDisabledByTimeout:
-            messages.string = "tap disabled by timeout."
+            messages.string = "Tap disabled by timeout."
+            tapIsDisabled()
         case.tapDisabledByUserInput:
-            if messages.string != "tap disabled." {
-                messages.string = "tap disabled by user input."
+            if messages.string != "Tap disabled." {
+                messages.string = "Tap disabled by user input."
             }
+            tapIsDisabled()
         case .keyUp:
             break
         case .keyDown:
             let keycode = event.getIntegerValueField(.keyboardEventKeycode)
-            if keycode == kVK_ANSI_X && cmd_pressed {
-                disableTap(sender: nil  )
+            let mask = UInt64(kCONTROL | kOPTION | kCOMMAND)
+            if keyboard_flags & mask == mask && keycode == kVK_Delete {
+                disableTap(sender: nil)
             }
         case .flagsChanged:
-            let ctrl = (event.flags.rawValue & UInt64(NSEvent.ModifierFlags.control.rawValue)) != 0
-            print("ctrl", ctrl)
-            cmd_pressed = (event.flags.rawValue & UInt64(NSEvent.ModifierFlags.command.rawValue)) != 0
-
+            keyboard_flags = event.flags.rawValue
         default:
             assert(false)
         }
@@ -93,15 +98,23 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     @IBAction func disableTap(sender: Any?) {
         CGEvent.tapEnable(tap: maybe_tap!, enable: false)
+        messages.string = "Tap disabled."
+        tapIsDisabled()
+    }
+    
+    func tapIsDisabled() {
+        tapButton.isEnabled = true
         releaseKeyboardMenuItem.isEnabled = false
         releaseKeyboardTouchbarItem.isEnabled = false
-        messages.string = "tap disabled."
+    }
+    
+    func tapIsEnabled() {
+        tapButton.isEnabled = false
+        releaseKeyboardMenuItem.isEnabled = true
+        releaseKeyboardTouchbarItem.isEnabled = true
     }
 
     @IBAction func tap(sender: NSButton) {
-        assert(maybe_tap == nil)
-
-        let mask : UInt64 = 1 << CGEventType.keyUp.rawValue | 1 << CGEventType.keyDown.rawValue  | 1 << CGEventType.flagsChanged.rawValue
 
         func callback(proxy: CGEventTapProxy, type: CGEventType, event: CGEvent, refcon: UnsafeMutableRawPointer?) -> Unmanaged<CGEvent>? {
             let del = Unmanaged<AppDelegate>.fromOpaque(refcon!).takeUnretainedValue()
@@ -111,21 +124,34 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 return nil
             }
         }
+        
+        let first_time = maybe_tap == nil
+        
+        if maybe_tap == nil {
+            let mask : UInt64 = 1 << CGEventType.keyUp.rawValue | 1 << CGEventType.keyDown.rawValue  | 1 << CGEventType.flagsChanged.rawValue
+            maybe_tap = CGEvent.tapCreate(tap:.cgSessionEventTap, place:.headInsertEventTap, options:.defaultTap, eventsOfInterest: mask, callback:callback, userInfo: Unmanaged.passUnretained(self).toOpaque())
+        }
 
-        maybe_tap = CGEvent.tapCreate(tap:.cgSessionEventTap, place:.headInsertEventTap, options:.defaultTap, eventsOfInterest: mask, callback:callback, userInfo: Unmanaged.passUnretained(self).toOpaque())
         guard let tap = maybe_tap else
         {
-            messages.string = "couldn't create tap"
+            messages.string = "Couldn't create tap.\nCheck that permission is granted in Preferences > Security > Privacy > Accessibility"
             return
         }
 
-        let source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
-        CFRunLoopAddSource(CFRunLoopGetCurrent(), source, .commonModes)
+        if (first_time) {
+            let source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
+            CFRunLoopAddSource(CFRunLoopGetCurrent(), source, .commonModes)
+        }
+        
         CGEvent.tapEnable(tap: tap, enable: true)
-        messages.string = "created tap!"
-        tapButton.isEnabled = false
-        releaseKeyboardMenuItem.isEnabled = true
-        releaseKeyboardTouchbarItem.isEnabled = true
+        
+        if (!CGEvent.tapIsEnabled(tap: tap)) {
+            messages.string = "Couldn't enale tap."
+            return
+        }
+        
+        messages.string = "Tap enabled!\n" + "Press ⌃⌥⌘⌫ to release."
+        tapIsEnabled()
     }
 
 
@@ -135,12 +161,23 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         defer { iterator_p.deallocate() }
         let kr = IOServiceGetMatchingServices(kIOMasterPortDefault, matching, iterator_p)
         if kr == KERN_SUCCESS {
+            var devices : [String] = []
             while true {
                 let service = IOIteratorNext(iterator_p.pointee)
                 if service == 0 { break }
                 let k : NSString = "IOCalloutDevice"
                 let dev = IORegistryEntryCreateCFProperty(service, k, kCFAllocatorDefault, 0).takeRetainedValue()
-                serialPortSelector.addItem(withTitle: String(dev as! CFString))
+                devices.append(String(dev as! CFString))
+            }
+            devices.sort { (a, b) -> Bool in
+                if a.starts(with: "/dev/cu.usbserial") && !b.starts(with: "/dev/cu.usbserial") {
+                    return true
+                } else {
+                    return a < b
+                }
+            }
+            for dev in devices {
+                serialPortSelector.addItem(withTitle: dev)
             }
         }
     }
