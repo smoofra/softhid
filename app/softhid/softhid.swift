@@ -72,6 +72,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         maybe_fd = nil
         connectButton.isEnabled = true
         disconnectButton.isEnabled = false
+        if let tap = maybe_tap {
+            CGEvent.tapEnable(tap: tap, enable: false)
+        }
     }
 
     func handleTapEvent(proxy: CGEventTapProxy, type: CGEventType, event: CGEvent) -> CGEvent? {
@@ -98,8 +101,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         case .flagsChanged:
             keyboard_flags = event.flags.rawValue
             sendKeyFlags(carbon_flags: UInt(keyboard_flags))
+            
+        case .mouseMoved:
+            let x = event.getIntegerValueField(.mouseEventDeltaX)
+            let y = event.getIntegerValueField(.mouseEventDeltaY)
+            trySend(String.init(format: "\u{1b}{%d,%dm", x, y))
         default:
-            assert(false)
+            break
+            //assert(false)
         }
         return nil
     }
@@ -111,12 +120,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     func tapIsDisabled() {
+        CGAssociateMouseAndMouseCursorPosition(1)
         tapButton.isEnabled = true
         releaseKeyboardMenuItem.isEnabled = false
         releaseKeyboardTouchbarItem.isEnabled = false
     }
     
     func tapIsEnabled() {
+        CGAssociateMouseAndMouseCursorPosition(0)
         tapButton.isEnabled = false
         releaseKeyboardMenuItem.isEnabled = true
         releaseKeyboardTouchbarItem.isEnabled = true
@@ -136,7 +147,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let first_time = maybe_tap == nil
         
         if maybe_tap == nil {
-            let mask : UInt64 = 1 << CGEventType.keyUp.rawValue | 1 << CGEventType.keyDown.rawValue  | 1 << CGEventType.flagsChanged.rawValue
+            let mask : UInt64 = 1 << CGEventType.keyUp.rawValue | 1 << CGEventType.keyDown.rawValue  | 1 << CGEventType.flagsChanged.rawValue | 1 << CGEventType.mouseMoved.rawValue
             maybe_tap = CGEvent.tapCreate(tap:.cgSessionEventTap, place:.headInsertEventTap, options:.defaultTap, eventsOfInterest: mask, callback:callback, userInfo: Unmanaged.passUnretained(self).toOpaque())
         }
 

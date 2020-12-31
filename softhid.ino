@@ -20,8 +20,12 @@ enum State {
 
 struct StateMachine {
   State state;
-  int code;
+  int i;
+  static const int num_codes = 5;
+  int codes[num_codes];
+  bool minus;
 };
+
 
 void loop() {
   static long last_hello = 0;
@@ -171,11 +175,11 @@ void loop() {
         case '5': case '6': case '7': case '8': case '9':
         {
            int digit = byte - '0';
-           m.code = m.code*10 + digit;
+           m.codes[0] = m.codes[0]*10 + digit;
            break;
          }
         case '~':
-           switch (m.code) {
+           switch (m.codes[0]) {
              case 15:
              Keyboard.press(KEY_F5);
              Keyboard.release(KEY_F5);
@@ -284,24 +288,44 @@ void loop() {
 
       case rawkey:
       switch (byte) {
+        case '-':
+          m.minus = true;
+          break;
+        case ',':
+          m.minus = false;
+          m.i++;
+          if (m.i >= m.num_codes) {
+             Serial1.printf("what?\r\n");
+             m = {};
+          }
+          break;
         case '0': case '1': case '2': case '3': case '4':
         case '5': case '6': case '7': case '8': case '9': {
-          uint8_t digit = byte - '0';
-          m.code = m.code * 10 + digit;
+          int sign = m.minus ? -1 : 1;
+          uint8_t digit = byte - '0';                    
+          m.codes[m.i] = m.codes[m.i] * 10 + sign*digit;
           break;
         }
+        case 'm':
+          Mouse.move(m.codes[0], m.codes[1], m.codes[2], m.codes[3]);
+          m = {};
+          break;
+        case 'b':
+          Mouse.set_buttons(m.codes[0], m.codes[1], m.codes[2], m.codes[3], m.codes[4]);
+          m = {};
+          break;
         case 'u':
-          Keyboard.release(m.code);
+          Keyboard.release(m.codes[0]);
           Keyboard.send_now();
           m = {};
           break;
         case 'd':
-          Keyboard.press(m.code);
+          Keyboard.press(m.codes[0]);
           Keyboard.send_now();
           m = {};
           break;
         case 'f':
-          Keyboard.set_modifier(m.code);
+          Keyboard.set_modifier(m.codes[0]);
           Keyboard.send_now();
           m = {};
           break;
