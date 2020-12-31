@@ -13,6 +13,13 @@ import IOKit.serial
 enum SerialPortError : Error {
     case EOF
     case Errno(Int32)
+    case NotConnected
+    case QueueFull
+}
+
+struct Message {
+    let message : String
+    let needsAck : Bool
 }
 
 @main
@@ -27,11 +34,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @IBOutlet var releaseKeyboardMenuItem: NSMenuItem!
     @IBOutlet var releaseKeyboardTouchbarItem: NSButton!
 
-
     var maybe_fd : Int32?
     var maybe_tap : CFMachPort?
     var keyboard_flags : UInt64 = 0
     
+    var readSource : DispatchSourceRead?
+    var acksNeeded = 0
+    let maxAcksNeeded = 5
+
+    let maxQueueSize = 250
+    var writeQueue : [Message] = []
+    var readBuffer = UnsafeMutableRawBufferPointer.allocate(byteCount: 1024, alignment: 1)
+
     let kSHIFT = NSEvent.ModifierFlags.shift.rawValue
     let kCONTROL = NSEvent.ModifierFlags.control.rawValue
     let kOPTION = NSEvent.ModifierFlags.option.rawValue
@@ -58,20 +72,31 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             messages.string = "unable to set the baud rate"
             return
         }
+        let source = DispatchSource.makeReadSource(fileDescriptor: fd, queue: DispatchQueue.main)
+        source.setEventHandler(handler: self.handleRead)
+        source.activate()
+        readSource = source
         maybe_fd = fd
         connectButton.isEnabled = false
         disconnectButton.isEnabled = true
         messages.string = "ok!"
     }
 
+
     @IBAction func disconnect(sender: Any?) {
         if let fd = maybe_fd {
             close(fd);
         }
+        writeQueue.removeAll()
+        acksNeeded = 0
         messages.string = ""
         maybe_fd = nil
         connectButton.isEnabled = true
         disconnectButton.isEnabled = false
+        if let source  = readSource {
+            source.cancel()
+            readSource = nil
+        }
         if let tap = maybe_tap {
             CGEvent.tapEnable(tap: tap, enable: false)
         }
@@ -105,7 +130,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         case .mouseMoved:
             let x = event.getIntegerValueField(.mouseEventDeltaX)
             let y = event.getIntegerValueField(.mouseEventDeltaY)
-            trySend(String.init(format: "\u{1b}{%d,%dm", x, y))
+            trySend(String.init(format: "\u{1b}{%d,%dm", x, y), needsAck:true)
         default:
             break
             //assert(false)
@@ -205,6 +230,47 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
 
+    func readAcks() throws {
+        guard let fd = maybe_fd else { throw SerialPortError.NotConnected }
+        while true {
+            let r = read(fd, readBuffer.baseAddress, readBuffer.count)
+            if (r < 0 && errno != EAGAIN) {
+                throw SerialPortError.Errno(errno)
+            }
+            if (r <= 0) { break }
+            for chr in readBuffer.prefix(r) {
+                if chr == 0x06 {
+                    acksNeeded -= 1
+                    assert(acksNeeded >= 0)
+                }
+            }
+        }
+    }
+
+    func handleRead() {
+        do {
+            while (writeQueue.count != 0) {
+                try readAcks()
+                try drainQueue()
+            }
+        } catch {
+            messages.string = "Failed to read from serial port."
+            disconnect(sender: nil)
+        }
+    }
+
+    func drainQueue() throws {
+        while acksNeeded < maxAcksNeeded  && writeQueue.count != 0 {
+            let message = writeQueue.removeFirst()
+            try send(message.message)
+            if message.needsAck {
+                acksNeeded += 1
+                assert(acksNeeded <= maxAcksNeeded)
+            }
+        }
+    }
+
+
     func send(_ string : String) throws {
         guard let fd = maybe_fd else { return }
         let seq = string.data(using: .utf8)!
@@ -226,10 +292,25 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
 
-    func trySend(_ string : String) {
+    func trySend(_ string : String, needsAck : Bool = false) {
         var error : String?
         do {
+            try readAcks()
+            try drainQueue()
+            print(String.init(format: "qqqqq=%d needsack=%@ outstanding=%d", writeQueue.count, needsAck ? "yes" : "no", acksNeeded))
+            if (acksNeeded >= maxAcksNeeded || writeQueue.count != 0) {
+                assert (writeQueue.count==0 || acksNeeded >= maxAcksNeeded)
+                writeQueue.append(Message(message: string, needsAck: needsAck))
+                if writeQueue.count > maxQueueSize {
+                    throw SerialPortError.QueueFull
+                }
+                return;
+            }
             try send(string)
+            if needsAck {
+                acksNeeded += 1
+                assert(acksNeeded <= maxAcksNeeded)
+            }
             return
         } catch SerialPortError.EOF {
             error = "unexpected EOF"

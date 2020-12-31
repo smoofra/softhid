@@ -308,6 +308,7 @@ void loop() {
         }
         case 'm':
           Mouse.move(m.codes[0], m.codes[1], m.codes[2], m.codes[3]);
+          Serial1.printf("%c", 0x06); //ACK
           m = {};
           break;
         case 'b':
