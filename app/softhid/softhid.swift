@@ -17,14 +17,9 @@ enum SerialPortError : Error {
     case QueueFull
 }
 
-//struct Message {
-//    let message : String
-//    let needsAck : Bool
-//}
-
 enum Message {
     case Generic(String)
-    case Mouse(x:Int8, y:Int8)
+    case Mouse(x:Int64, y:Int64)
 
     var needsAck:Bool {
         get {
@@ -152,8 +147,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             
         case .mouseMoved:
             // FIXME check overflow
-            let x = Int8(event.getIntegerValueField(.mouseEventDeltaX))
-            let y = Int8(event.getIntegerValueField(.mouseEventDeltaY))
+            let x = event.getIntegerValueField(.mouseEventDeltaX)
+            let y = event.getIntegerValueField(.mouseEventDeltaY)
             trySend(message: .Mouse(x:x, y:y))
         default:
             break
@@ -283,9 +278,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-
-    func drainQueue() throws {
-
+    func coalese() {
         func takeInt8(_ x : Int64) -> (Int64, Int8) {
             let max = Int64(Int8.max)
             let min = Int64(Int8.min)
@@ -298,33 +291,30 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
 
+        var cumx : Int64 = 0
+        var cumy : Int64 = 0
+        writeQueue = writeQueue.filter { (m : Message) -> Bool in
+            switch (m) {
+            case .Mouse(x: let x, y: let y):
+                cumx += Int64(x);
+                cumy += Int64(y);
+                return false
+            default: return true
+            }
+        }
+
+        while (cumx != 0 || cumy != 0) {
+            let x : Int8
+            (cumx, x) = takeInt8(cumx)
+            let y : Int8
+            (cumy, y) = takeInt8(cumy)
+            writeQueue.append(.Mouse(x:Int64(x), y:Int64(y)))
+        }
+    }
+
+    func drainQueue() throws {
+        coalese()
         while acksNeeded < maxAcksNeeded  && writeQueue.count != 0 {
-
-            var cumx : Int64 = 0
-            var cumy : Int64 = 0
-            writeQueue = writeQueue.filter { (m : Message) -> Bool in
-                switch (m) {
-                case .Mouse(x: let x, y: let y):
-                    cumx += Int64(x);
-                    cumy += Int64(y);
-                    return false
-                default: return true
-                }
-            }
-
-            while (cumx != 0 || cumy != 0) {
-                let x : Int8
-                (cumx, x) = takeInt8(cumx)
-                let y : Int8
-                (cumy, y) = takeInt8(cumy)
-                writeQueue.append(.Mouse(x: x, y: y))
-            }
-
-            if (writeQueue.count == 0) {
-                // mouse messages cancelled out, lol
-                return
-            }
-
             let message = writeQueue.removeFirst()
             try send(message.message)
             if message.needsAck {
@@ -364,7 +354,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         do {
             try readAcks()
             try drainQueue()
-            print(String.init(format: "qqqqq=%d needsack=%@ outstanding=%d", writeQueue.count, m.needsAck ? "yes" : "no", acksNeeded))
             if (acksNeeded >= maxAcksNeeded || writeQueue.count != 0) {
                 assert (writeQueue.count==0 || acksNeeded >= maxAcksNeeded)
                 writeQueue.append(m)
