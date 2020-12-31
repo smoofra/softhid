@@ -17,9 +17,32 @@ enum SerialPortError : Error {
     case QueueFull
 }
 
-struct Message {
-    let message : String
-    let needsAck : Bool
+//struct Message {
+//    let message : String
+//    let needsAck : Bool
+//}
+
+enum Message {
+    case Generic(String)
+    case Mouse(x:Int8, y:Int8)
+
+    var needsAck:Bool {
+        get {
+            switch (self) {
+            case .Generic: return false
+            case .Mouse: return true
+            }
+        }
+    }
+
+    var message : String {
+        get {
+            switch(self) {
+                case .Generic(let s): return s
+                case .Mouse(x: let x, y: let y): return String.init(format:"\u{1b}{%d,%dm", x, y)
+            }
+        }
+    }
 }
 
 @main
@@ -128,9 +151,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             sendKeyFlags(carbon_flags: UInt(keyboard_flags))
             
         case .mouseMoved:
-            let x = event.getIntegerValueField(.mouseEventDeltaX)
-            let y = event.getIntegerValueField(.mouseEventDeltaY)
-            trySend(String.init(format: "\u{1b}{%d,%dm", x, y), needsAck:true)
+            // FIXME check overflow
+            let x = Int8(event.getIntegerValueField(.mouseEventDeltaX))
+            let y = Int8(event.getIntegerValueField(.mouseEventDeltaY))
+            trySend(message: .Mouse(x:x, y:y))
         default:
             break
             //assert(false)
@@ -259,8 +283,48 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+
     func drainQueue() throws {
+
+        func takeInt8(_ x : Int64) -> (Int64, Int8) {
+            let max = Int64(Int8.max)
+            let min = Int64(Int8.min)
+            if (x >= max) {
+                return (x-max, Int8.max)
+            } else if (x <= min) {
+                return (x-min, Int8.min)
+            } else {
+                return (0, Int8(x))
+            }
+        }
+
         while acksNeeded < maxAcksNeeded  && writeQueue.count != 0 {
+
+            var cumx : Int64 = 0
+            var cumy : Int64 = 0
+            writeQueue = writeQueue.filter { (m : Message) -> Bool in
+                switch (m) {
+                case .Mouse(x: let x, y: let y):
+                    cumx += Int64(x);
+                    cumy += Int64(y);
+                    return false
+                default: return true
+                }
+            }
+
+            while (cumx != 0 || cumy != 0) {
+                let x : Int8
+                (cumx, x) = takeInt8(cumx)
+                let y : Int8
+                (cumy, y) = takeInt8(cumy)
+                writeQueue.append(.Mouse(x: x, y: y))
+            }
+
+            if (writeQueue.count == 0) {
+                // mouse messages cancelled out, lol
+                return
+            }
+
             let message = writeQueue.removeFirst()
             try send(message.message)
             if message.needsAck {
@@ -291,23 +355,26 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         })
     }
 
+    func trySend(_ string : String) {
+        trySend(message: Message.Generic(string))
+    }
 
-    func trySend(_ string : String, needsAck : Bool = false) {
+    func trySend(message m : Message) {
         var error : String?
         do {
             try readAcks()
             try drainQueue()
-            print(String.init(format: "qqqqq=%d needsack=%@ outstanding=%d", writeQueue.count, needsAck ? "yes" : "no", acksNeeded))
+            print(String.init(format: "qqqqq=%d needsack=%@ outstanding=%d", writeQueue.count, m.needsAck ? "yes" : "no", acksNeeded))
             if (acksNeeded >= maxAcksNeeded || writeQueue.count != 0) {
                 assert (writeQueue.count==0 || acksNeeded >= maxAcksNeeded)
-                writeQueue.append(Message(message: string, needsAck: needsAck))
+                writeQueue.append(m)
                 if writeQueue.count > maxQueueSize {
                     throw SerialPortError.QueueFull
                 }
                 return;
             }
-            try send(string)
-            if needsAck {
+            try send(m.message)
+            if m.needsAck {
                 acksNeeded += 1
                 assert(acksNeeded <= maxAcksNeeded)
             }
