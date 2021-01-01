@@ -19,7 +19,7 @@ enum SerialPortError : Error {
 
 enum Message {
     case Generic(String)
-    case Mouse(x:Int64, y:Int64)
+    case Mouse(x:Int64, y:Int64, scroll:Int64 = 0)
 
     var needsAck:Bool {
         get {
@@ -34,7 +34,12 @@ enum Message {
         get {
             switch(self) {
                 case .Generic(let s): return s
-                case .Mouse(x: let x, y: let y): return String.init(format:"\u{1b}{%d,%dm", x, y)
+            case .Mouse(x: let x, y: let y, scroll: let scroll):
+                if scroll == 0 {
+                    return String.init(format:"\u{1b}{%d,%dm", x, y)
+                } else {
+                    return String.init(format:"\u{1b}{%d,%d,%dm", x, y, scroll)
+                }
             }
         }
     }
@@ -160,6 +165,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             let y = event.getIntegerValueField(.mouseEventDeltaY)
             trySend(message: .Mouse(x:x, y:y))
 
+        case .scrollWheel:
+            let scroll = event.getIntegerValueField(.scrollWheelEventDeltaAxis1)
+            trySend(message: .Mouse(x:0, y:0, scroll:scroll))
+
         case .leftMouseUp:
             leftMouseDown = false
             trySendMouseButtons()
@@ -232,7 +241,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 .keyUp, .keyDown, .flagsChanged,
                 .mouseMoved,
                 .leftMouseUp, .leftMouseDown, .rightMouseUp, .rightMouseDown,
-                .leftMouseDragged, .rightMouseDragged,
+                .leftMouseDragged, .rightMouseDragged, .scrollWheel,
             ]
             let mask = types.reduce(0) { (x:UInt64, type:CGEventType) -> UInt64 in
                 x | 1 << type.rawValue
@@ -338,11 +347,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         var cumx : Int64 = 0
         var cumy : Int64 = 0
+        var cumscroll : Int64 = 0
         writeQueue = writeQueue.filter { (m : Message) -> Bool in
             switch (m) {
-            case .Mouse(x: let x, y: let y):
+            case .Mouse(x: let x, y: let y, scroll: let scroll):
                 cumx += Int64(x);
                 cumy += Int64(y);
+                cumscroll += Int64(scroll)
                 return false
             default: return true
             }
@@ -353,7 +364,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             (cumx, x) = takeInt8(cumx)
             let y : Int8
             (cumy, y) = takeInt8(cumy)
-            writeQueue.append(.Mouse(x:Int64(x), y:Int64(y)))
+            let scroll : Int8
+            (cumscroll, scroll) = takeInt8(cumscroll)
+            writeQueue.append(.Mouse(x:Int64(x), y:Int64(y), scroll:Int64(scroll)))
         }
     }
 
