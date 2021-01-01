@@ -22,6 +22,7 @@
                 <outlet property="messages" destination="g09-M3-VRq" id="KQa-WI-VDU"/>
                 <outlet property="releaseKeyboardMenuItem" destination="Hu1-gT-r6J" id="psc-NR-TNa"/>
                 <outlet property="releaseKeyboardTouchbarItem" destination="TrQ-aE-kXq" id="BUC-Ug-xfs"/>
+                <outlet property="releaseKeychord" destination="C7u-SX-T46" id="ugq-rF-VZh"/>
                 <outlet property="serialPortSelector" destination="IUE-bd-ebz" id="bKL-Ix-An2"/>
                 <outlet property="tapButton" destination="TZp-pJ-zSs" id="YMy-mS-PqQ"/>
                 <outlet property="window" destination="QvC-M9-y7g" id="gIp-Ho-8D9"/>
@@ -173,12 +174,20 @@
                             <action selector="tapWithSender:" target="Voe-Tx-rLC" id="Pcy-uU-2vs"/>
                         </connections>
                     </button>
+                    <button verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="C7u-SX-T46">
+                        <rect key="frame" x="18" y="337" width="231" height="18"/>
+                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                        <buttonCell key="cell" type="check" title="Press ⌃⌥⌘⌫ to release keyboard" bezelStyle="regularSquare" imagePosition="left" state="on" inset="2" id="B39-K9-L2S">
+                            <behavior key="behavior" changeContents="YES" doesNotDimImage="YES" lightByContents="YES"/>
+                            <font key="font" metaFont="system"/>
+                        </buttonCell>
+                    </button>
                 </subviews>
             </view>
             <connections>
                 <outlet property="touchbar" destination="Jp3-V8-krS" id="XDq-oE-dpt"/>
             </connections>
-            <point key="canvasLocation" x="-567" y="103.5"/>
+            <point key="canvasLocation" x="-754" y="53"/>
         </window>
         <touchBar id="Jp3-V8-krS">
             <touchBarItems>

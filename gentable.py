@@ -28,9 +28,11 @@ carbon_names['RIGHT'] = 'RightArrow'
 carbon_names['LEFT'] = 'LeftArrow'
 carbon_names['UP'] = 'UpArrow'
 carbon_names['DOWN'] = 'DownArrow'
+carbon_names['BACKSPACE'] = 'Delete'
+carbon_names['DELETE'] = 'ForwardDelete'
 
 skip = {'NON_US_NUM', 'NON_US_BS', 'TILDE', "PRINTSCREEN", "SCROLL_LOCK",
-        "PAUSE", "INSERT", "NUM_LOCK", "MENU", "BACKSPACE"}
+        "PAUSE", "INSERT", "NUM_LOCK", "MENU"}
 
 skip |= {f"F{i}" for i in range(13, 100)}
 

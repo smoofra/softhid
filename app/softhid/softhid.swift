@@ -56,6 +56,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @IBOutlet var tapButton: NSButton!
     @IBOutlet var releaseKeyboardMenuItem: NSMenuItem!
     @IBOutlet var releaseKeyboardTouchbarItem: NSButton!
+    @IBOutlet var releaseKeychord: NSButton!
 
     var maybe_fd : Int32?
     var maybe_tap : CFMachPort?
@@ -151,7 +152,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         case .keyDown:
             let keycode = event.getIntegerValueField(.keyboardEventKeycode)
             let mask = UInt64(kCONTROL | kOPTION | kCOMMAND)
-            if keyboard_flags & mask == mask && keycode == kVK_Delete {
+            if releaseKeychord.state == .on && keyboard_flags & mask == mask && keycode == kVK_Delete {
                 disableTap(sender: nil)
             } else if event.getIntegerValueField(.keyboardEventAutorepeat) == 0 {
                 sendKeyDown(carbon_keycode: Int(keycode))
@@ -267,7 +268,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
         
-        messages.string = "Tap enabled!\n" + "Press ⌃⌥⌘⌫ to release."
+        messages.string = "Tap enabled!\n" + (releaseKeychord.state == .on ?   "Press ⌃⌥⌘⌫ to release." : "Use touchpad to release.")
         tapIsEnabled()
     }
 
