@@ -268,7 +268,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
         
-        messages.string = "Tap enabled!\n" + (releaseKeychord.state == .on ?   "Press ⌃⌥⌘⌫ to release." : "Use touchpad to release.")
+        messages.string = "Tap enabled!\n" + (releaseKeychord.state == .on ?   "Press ⌃⌥⌘⌫ to release." : "Use touchbar to release.")
         tapIsEnabled()
     }
 
