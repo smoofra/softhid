@@ -22,8 +22,12 @@ Teensy firmware:  see `softhid.ino`
 
 Keyboard side: it should show up as a normal USB keyboard, no extra software required
 
-Serial side: I've just been using GNU screen. (`screen /dev/cu.usbserial-021397D0 115200`) I'm planning on adding a desktop program that can capture keyboard and mouse input.
+Serial side:
 
+If you you only need basic xterm compatible keyboard input, you can use any terminal program such as
+GNU screen. (`screen /dev/cu.usbserial-021397D0 115200`)
+
+There's also a Mac OS client in `./app` that supports full keyboard and mouse input.
 
 
 
