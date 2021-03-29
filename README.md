@@ -1,7 +1,7 @@
 Softhid 
 ========
 
-This project is a "soft HID" USB cable.   It has two micro USB ports.   One port acts like a USB keyboard (and hopefully mouse in the future).  
+This project is a "soft HID" USB cable.   It has two micro USB ports.   One port acts like a USB keyboard and mouse.  
 The other port is a usb serial port.   You can control the keyboard and mouse by sending commands to the serial port.
 
 Parts
